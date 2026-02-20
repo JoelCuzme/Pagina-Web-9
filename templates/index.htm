@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Inicio{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 text-center">
+        <div class="card p-5">
+            <h1 class="text-primary">Panel de Control</h1>
+            <p class="lead">Bienvenido al Sistema de Gestión Médica.</p>
+            <hr>
+            <div class="d-grid gap-2 d-md-block">
+                <a href="/cita/Juan_Perez" class="btn btn-primary px-4">Ver Cita de Ejemplo</a>
+                <a href="/factura" class="btn btn-outline-secondary px-4">Ir a Facturación</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
