@@ -13,10 +13,6 @@ def normalizar_nombre(texto):
 def home():
     return render_template('index.html')
 
-@app.route('/about')
-def about():
-    return render_template('about.html')
-
 @app.route('/cita/<paciente>')
 def ver_cita(paciente):
     nombre = normalizar_nombre(paciente)
