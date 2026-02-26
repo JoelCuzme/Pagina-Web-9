@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card p-4">
+    <h3 class="text-primary mb-4">Horarios de Citas Agendadas</h3>
+    <table class="table table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Paciente</th>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cita in citas %}
+            <tr>
+                <td>{{ cita[1] }}</td>
+                <td>{{ cita[2] }}</td>
+                <td>{{ cita[3] }}</td>
+                <td>
+                    <form action="/cambiar_cita" method="POST" class="d-flex gap-2">
+                        <input type="hidden" name="id_cita" value="{{ cita[0] }}">
+                        <input type="date" name="nueva_fecha" class="form-control form-control-sm" required>
+                        <button type="submit" class="btn btn-sm btn-outline-warning">Cambiar</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="/agendar" class="btn btn-primary mt-3">Agendar otra cita</a>
+</div>
+{% endblock %}

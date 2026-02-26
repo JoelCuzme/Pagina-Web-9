@@ -26,3 +26,22 @@ class GestionMedica:
             conn.execute("INSERT INTO servicios VALUES (?,?,?,?)", 
                          (nuevo.id, nuevo.nombre, nuevo.precio, nuevo.stock_disponible))
         self.servicios[nuevo.id] = nuevo # Sincronizar con la colección
+
+    def inicializar_citas_db(self):
+        with sqlite3.connect(self.db_name) as conn:
+            conn.execute("""CREATE TABLE IF NOT EXISTS citas 
+                     (id INTEGER PRIMARY KEY AUTOINCREMENT, paciente TEXT, fecha TEXT, hora TEXT)""")
+
+    def agendar_cita(self, paciente, fecha, hora):
+        with sqlite3.connect(self.db_name) as conn:
+            cursor = conn.execute("INSERT INTO citas (paciente, fecha, hora) VALUES (?,?,?)", 
+                             (paciente, fecha, hora))
+            return cursor.lastrowid
+
+    def obtener_citas(self):
+        with sqlite3.connect(self.db_name) as conn:
+            return conn.execute("SELECT * FROM citas").fetchall()
+
+    def actualizar_cita(self, id_cita, nueva_fecha):
+        with sqlite3.connect(self.db_name) as conn:
+            conn.execute("UPDATE citas SET fecha = ? WHERE id = ?", (nueva_fecha, id_cita))

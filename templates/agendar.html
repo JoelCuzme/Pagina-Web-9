@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card p-4">
+            <h3 class="text-primary mb-4">Agendar Nueva Cita</h3>
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="form-label">Nombre del Paciente</label>
+                    <input type="text" name="paciente" class="form-control" placeholder="Ej: Juan Pérez" required>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Fecha</label>
+                        <input type="date" name="fecha" class="form-control" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Hora</label>
+                        <input type="time" name="hora" class="form-control" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 py-2">CONFIRMAR CITA</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
