@@ -3,8 +3,10 @@ from modelos import ServicioMedico
 class GestionMedica:
     def __init__(self):
         self.db_name = "salud_total.db"
+        # Llamamos a ambos para asegurar que las tablas existan siempre
         self._inicializar_db()
-        # COLECCIÓN: Diccionario para búsqueda rápida por ID
+        self.inicializar_citas_db() 
+        
         self.servicios = {} 
         self.cargar_desde_db()
 
