@@ -1,19 +1,13 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect
+from gestion import GestionMedica
+from modelos import ServicioMedico
 
 app = Flask(__name__)
+sistema = GestionMedica()
 
-# --- LÓGICA DE NEGOCIO (Dominio) ---
-# Aislada de Flask, usa vocabulario de experto
-def calcular_total_con_impuestos(monto_base):
-    """Regla: Calcular el total de una factura incluyendo los impuestos (15%)"""
-    IVA = 0.15
-    return round(monto_base * (1 + IVA), 2)
-
+# Función de utilidad (Lógica de Presentación)
 def normalizar_nombre(texto):
-    """Regla: Convertir formato de URL a nombre legible"""
     return texto.replace("_", " ")
-
-# --- RUTAS ---
 
 @app.route('/')
 def home():
@@ -26,14 +20,20 @@ def about():
 @app.route('/cita/<paciente>')
 def ver_cita(paciente):
     nombre = normalizar_nombre(paciente)
-    return render_template('about.html', nombre=nombre, es_cita=True)
+    # Reutilizamos about.html como tenías en tu código original
+    return render_template('about.html', nombre=nombre)
 
 @app.route('/factura', methods=['GET', 'POST'])
 def factura():
     total = None
     if request.method == 'POST':
         subtotal = float(request.form.get('subtotal', 0))
-        total = calcular_total_con_impuestos(subtotal)
+        
+        # POO en acción: Creamos un objeto temporal para usar su lógica de impuestos
+        # En un sistema real, aquí buscarías el servicio en la base de datos
+        servicio_temp = ServicioMedico(0, "Consulta", subtotal)
+        total = servicio_temp.calcular_iva() 
+        
     return render_template('factura.html', total=total)
 
 if __name__ == '__main__':
