@@ -37,8 +37,13 @@ def agendar():
         paciente = request.form.get('paciente')
         fecha = request.form.get('fecha')
         hora = request.form.get('hora')
+        
+        # Guardamos en la base de datos
         sistema.agendar_cita(paciente, fecha, hora)
-        return redirect('/citas')
+        
+        # IMPORTANTE: Redirigir a la lista para ver que se guardó
+        return redirect('/citas') 
+        
     return render_template('agendar.html')
 
 @app.route('/citas')

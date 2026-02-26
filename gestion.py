@@ -1,12 +1,12 @@
 import sqlite3
 from modelos import ServicioMedico
 class GestionMedica:
+    # En gestion.py
     def __init__(self):
         self.db_name = "salud_total.db"
-        # Llamamos a ambos para asegurar que las tablas existan siempre
-        self._inicializar_db()
-        self.inicializar_citas_db() 
-        
+    # Llama a ambos métodos aquí para que las tablas se creen solas al abrir la app
+        self._inicializar_db() 
+        self.inicializar_citas_db() # <--- ASEGÚRATE DE QUE ESTA LÍNEA ESTÉ AQUÍ
         self.servicios = {} 
         self.cargar_desde_db()
 
