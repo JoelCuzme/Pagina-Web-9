@@ -93,36 +93,43 @@ def producto_form():
         nombre = request.form.get('nombre')
         precio = request.form.get('precio')
         cantidad = request.form.get('cantidad')
-        metodo = request.form.get('metodo') # SQL, JSON, CSV, TXT
 
-        # Persistencia según el método seleccionado
-        if metodo == 'SQL':
-            nueva = Medicina(nombre=nombre, precio=float(precio), cantidad=int(cantidad))
-            db.session.add(nueva)
-            db.session.commit()
+        # --- PERSISTENCIA AUTOMÁTICA EN TODOS LOS FORMATOS ---
 
-        elif metodo == 'TXT':
-            with open(os.path.join(DATA_PATH, "datos.txt"), "a") as f:
-                f.write(f"Producto: {nombre} | Precio: {precio} | Cantidad: {cantidad}\n")
+        # 1. SQLAlchemy (Base de datos SQLite)
+        nueva = Medicina(nombre=nombre, precio=float(precio), cantidad=int(cantidad))
+        db.session.add(nueva)
+        db.session.commit()
 
-        elif metodo == 'JSON':
-            ruta_json = os.path.join(DATA_PATH, "datos.json")
-            datos = []
-            if os.path.exists(ruta_json):
-                with open(ruta_json, "r") as f:
-                    datos = json.load(f)
-            datos.append({"nombre": nombre, "precio": precio, "cantidad": cantidad})
-            with open(ruta_json, "w") as f:
-                json.dump(datos, f, indent=4)
+        # 2. Archivo TXT (Usando open en modo lectura/escritura)
+        with open(os.path.join(DATA_PATH, "datos.txt"), "a", encoding="utf-8") as f:
+            f.write(f"Producto: {nombre} | Precio: {precio} | Cantidad: {cantidad}\n")
 
-        elif metodo == 'CSV':
-            ruta_csv = os.path.join(DATA_PATH, "datos.csv")
-            existe = os.path.isfile(ruta_csv)
-            with open(ruta_csv, "a", newline="") as f:
-                writer = csv.writer(f)
-                if not existe:
-                    writer.writerow(["Nombre", "Precio", "Cantidad"])
-                writer.writerow([nombre, precio, cantidad])
+        # 3. Archivo JSON (Librería json + conversión a diccionario)
+        ruta_json = os.path.join(DATA_PATH, "datos.json")
+        datos_json = []
+        if os.path.exists(ruta_json):
+            with open(ruta_json, "r", encoding="utf-8") as f:
+                try:
+                    datos_json = json.load(f)
+                except json.JSONDecodeError:
+                    datos_json = []
+        
+        # Convertimos a diccionario antes de almacenar
+        nuevo_item = {"nombre": nombre, "precio": precio, "cantidad": cantidad}
+        datos_json.append(nuevo_item)
+        
+        with open(ruta_json, "w", encoding="utf-8") as f:
+            json.dump(datos_json, f, indent=4)
+
+        # 4. Archivo CSV (Librería csv + métodos adecuados)
+        ruta_csv = os.path.join(DATA_PATH, "datos.csv")
+        existe_csv = os.path.isfile(ruta_csv)
+        with open(ruta_csv, "a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if not existe_csv:
+                writer.writerow(["Nombre", "Precio", "Cantidad"])
+            writer.writerow([nombre, precio, cantidad])
 
         return redirect(url_for('ver_datos'))
     
