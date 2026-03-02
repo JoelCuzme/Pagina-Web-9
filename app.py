@@ -3,12 +3,12 @@ import json
 import csv
 from flask import Flask, render_template, request, redirect, url_for
 
-# 1. IMPORTACIONES MODULARES (Semana 12)
+# 1. IMPORTACIONES MODULARES (Requisito Semana 12)
 from inventario.bd import db, init_db
 from inventario.productos import Medicina
 from inventario.inventario import guardar_en_archivos
 
-# Importaciones de tus clases de lógica previa
+# Importaciones de tu lógica previa
 from gestion import GestionMedica
 from modelos import ServicioMedico
 
@@ -17,28 +17,22 @@ sistema = GestionMedica()
 
 # --- CONFIGURACIÓN DE RUTAS Y PERSISTENCIA ---
 basedir = os.path.abspath(os.path.dirname(__file__))
-# Carpeta del paquete inventario
 INVENTARIO_DIR = os.path.join(basedir, 'inventario')
-# Carpeta física para los archivos planos (TXT, JSON, CSV)
 DATA_PATH = os.path.join(INVENTARIO_DIR, 'data')
 
-# Asegurar que la estructura de carpetas exista para evitar errores en Render
+# Asegurar directorios (Evita errores de "Carpeta no encontrada")
 os.makedirs(DATA_PATH, exist_ok=True)
 
-# Configuración de la base de datos SQLite
+# Configuración SQLite
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(INVENTARIO_DIR, 'bd.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Inicializar SQLAlchemy y crear tablas automáticamente
+# Inicializar y crear tablas
 init_db(app)
 with app.app_context():
     db.create_all()
 
-# --- FUNCIONES DE UTILIDAD ---
-def normalizar_nombre(texto):
-    return texto.replace("_", " ")
-
-# --- RUTAS DE NAVEGACIÓN Y CITAS ---
+# --- RUTAS DE NAVEGACIÓN ---
 
 @app.route('/')
 def home():
@@ -60,16 +54,7 @@ def ver_todas_las_citas():
     citas = sistema.obtener_citas()
     return render_template('lista_citas.html', citas=citas)
 
-@app.route('/factura', methods=['GET', 'POST'])
-def factura():
-    total = None
-    if request.method == 'POST':
-        subtotal = float(request.form.get('subtotal', 0))
-        servicio_temp = ServicioMedico(0, "Consulta", subtotal)
-        total = servicio_temp.calcular_iva() 
-    return render_template('factura.html', total=total)
-
-# --- RUTAS DE INVENTARIO Y PERSISTENCIA AUTOMÁTICA ---
+# --- RUTAS DE INVENTARIO (PERSISTENCIA MULTIFORMATO) ---
 
 @app.route('/inventario/nuevo', methods=['GET', 'POST'])
 def producto_form():
@@ -79,47 +64,48 @@ def producto_form():
             precio = float(request.form.get('precio', 0))
             cantidad = int(request.form.get('cantidad', 0))
 
-            # A. Persistencia en SQLite (SQLAlchemy)
-            nueva_medicina = Medicina(nombre=nombre, precio=precio, cantidad=cantidad)
-            db.session.add(nueva_medicina)
+            # Guardar en SQLite
+            nueva = Medicina(nombre=nombre, precio=precio, cantidad=cantidad)
+            db.session.add(nueva)
             db.session.commit()
 
-            # B. Persistencia en Formatos Planos (Modularizada en inventario.py)
-            # Se guardan automáticamente en datos.txt, datos.json y datos.csv
+            # Guardar en TXT, JSON y CSV (Llamada modular)
             guardar_en_archivos(nombre, precio, cantidad, DATA_PATH)
 
             return redirect(url_for('ver_datos'))
-        
         except Exception as e:
-            print(f"Error en persistencia: {e}")
-            return f"Error interno: {e}", 500
-    
+            print(f"Error al guardar: {e}")
+            return f"Error al procesar el formulario: {e}", 500
     return render_template('producto_form.html')
 
 @app.route('/datos')
 def ver_datos():
-    # 1. Lectura desde SQLite
-    medicinas_sql = Medicina.query.all()
+    try:
+        # 1. Leer de SQL
+        medicinas_sql = Medicina.query.all()
 
-    # 2. Lectura desde JSON para la vista
-    ruta_json = os.path.join(DATA_PATH, "datos.json")
-    datos_json = []
-    if os.path.exists(ruta_json):
-        with open(ruta_json, "r", encoding="utf-8") as f:
-            datos_json = json.load(f)
+        # 2. Leer de JSON (con manejo de errores)
+        datos_json = []
+        ruta_json = os.path.join(DATA_PATH, "datos.json")
+        if os.path.exists(ruta_json) and os.path.getsize(ruta_json) > 0:
+            with open(ruta_json, "r", encoding="utf-8") as f:
+                datos_json = json.load(f)
 
-    # 3. Lectura desde CSV para la vista
-    ruta_csv = os.path.join(DATA_PATH, "datos.csv")
-    datos_csv = []
-    if os.path.exists(ruta_csv):
-        with open(ruta_csv, "r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            datos_csv = list(reader)
+        # 3. Leer de CSV
+        datos_csv = []
+        ruta_csv = os.path.join(DATA_PATH, "datos.csv")
+        if os.path.exists(ruta_csv):
+            with open(ruta_csv, "r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                datos_csv = list(reader)
 
-    return render_template('datos.html', 
-                           medicinas=medicinas_sql, 
-                           datos_json=datos_json, 
-                           datos_csv=datos_csv)
+        return render_template('datos.html', 
+                               medicinas=medicinas_sql, 
+                               datos_json=datos_json, 
+                               datos_csv=datos_csv)
+    except Exception as e:
+        print(f"Error en vista de datos: {e}")
+        return f"Error al cargar la tabla de datos: {e}", 500
 
 if __name__ == '__main__':
     app.run(debug=True)
