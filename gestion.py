@@ -1,18 +1,49 @@
-from inventario.bd import db
-from inventario.productos import Cita, Servicio
-
+import sqlite3
+from modelos import ServicioMedico
 class GestionMedica:
+    # En gestion.py
+    def __init__(self):
+        self.db_name = "salud_total.db"
+    # Llama a ambos métodos aquí para que las tablas se creen solas al abrir la app
+        self._inicializar_db() 
+        self.inicializar_citas_db() # <--- ASEGÚRATE DE QUE ESTA LÍNEA ESTÉ AQUÍ
+        self.servicios = {} 
+        self.cargar_desde_db()
+
+    def _inicializar_db(self):
+        with sqlite3.connect(self.db_name) as conn:
+            conn.execute("""CREATE TABLE IF NOT EXISTS servicios 
+                         (id INTEGER PRIMARY KEY, nombre TEXT, precio REAL, stock INTEGER)""")
+
+    def cargar_desde_db(self):
+        with sqlite3.connect(self.db_name) as conn:
+            cursor = conn.execute("SELECT * FROM servicios")
+            for row in cursor:
+                s = ServicioMedico(row[0], row[1], row[2], row[3])
+                self.servicios[s.id] = s
+
+    def agregar_servicio(self, id_s, nombre, precio):
+        nuevo = ServicioMedico(id_s, nombre, precio)
+        with sqlite3.connect(self.db_name) as conn:
+            conn.execute("INSERT INTO servicios VALUES (?,?,?,?)", 
+                         (nuevo.id, nuevo.nombre, nuevo.precio, nuevo.stock_disponible))
+        self.servicios[nuevo.id] = nuevo # Sincronizar con la colección
+
+    def inicializar_citas_db(self):
+        with sqlite3.connect(self.db_name) as conn:
+            conn.execute("""CREATE TABLE IF NOT EXISTS citas 
+                     (id INTEGER PRIMARY KEY AUTOINCREMENT, paciente TEXT, fecha TEXT, hora TEXT)""")
+
     def agendar_cita(self, paciente, fecha, hora):
-        nueva_cita = Cita(paciente=paciente, fecha=fecha, hora=hora) [cite: 383, 384, 385]
-        db.session.add(nueva_cita)
-        db.session.commit() [cite: 405]
-        return nueva_cita.id [cite: 476]
+        with sqlite3.connect(self.db_name) as conn:
+            cursor = conn.execute("INSERT INTO citas (paciente, fecha, hora) VALUES (?,?,?)", 
+                             (paciente, fecha, hora))
+            return cursor.lastrowid
 
     def obtener_citas(self):
-        return Cita.query.all() [cite: 479]
+        with sqlite3.connect(self.db_name) as conn:
+            return conn.execute("SELECT * FROM citas").fetchall()
 
     def actualizar_cita(self, id_cita, nueva_fecha):
-        cita = Cita.query.get(id_cita) [cite: 480]
-        if cita:
-            cita.fecha = nueva_fecha [cite: 482]
-            db.session.commit()
+        with sqlite3.connect(self.db_name) as conn:
+            conn.execute("UPDATE citas SET fecha = ? WHERE id = ?", (nueva_fecha, id_cita))
