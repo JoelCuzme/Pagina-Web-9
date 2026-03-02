@@ -2,44 +2,35 @@ import os
 import json
 import csv
 from flask import Flask, render_template, request, redirect, url_for
-from flask_sqlalchemy import SQLAlchemy
 
-# Importaciones de tus archivos existentes
+# 1. IMPORTACIONES MODULARES (Semana 12)
+from inventario.bd import db, init_db
+from inventario.productos import Medicina
+from inventario.inventario import guardar_en_archivos
+
+# Importaciones de tus clases de lógica previa
 from gestion import GestionMedica
 from modelos import ServicioMedico
 
 app = Flask(__name__)
 sistema = GestionMedica()
 
-# --- CONFIGURACIÓN DE PERSISTENCIA ---
+# --- CONFIGURACIÓN DE RUTAS Y PERSISTENCIA ---
 basedir = os.path.abspath(os.path.dirname(__file__))
-
-# Aseguramos que las rutas sean absolutas y correctas para Linux (Render)
+# Carpeta del paquete inventario
 INVENTARIO_DIR = os.path.join(basedir, 'inventario')
+# Carpeta física para los archivos planos (TXT, JSON, CSV)
 DATA_PATH = os.path.join(INVENTARIO_DIR, 'data')
 
-# Crear directorios si no existen antes de configurar la DB
+# Asegurar que la estructura de carpetas exista para evitar errores en Render
 os.makedirs(DATA_PATH, exist_ok=True)
 
+# Configuración de la base de datos SQLite
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(INVENTARIO_DIR, 'bd.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
 
-# 2. Rutas para archivos locales
-DATA_PATH = os.path.join(basedir, 'inventario/data/')
-
-# Asegurar que las carpetas existan
-os.makedirs(DATA_PATH, exist_ok=True)
-
-# --- MODELO DE DATOS (SQLAlchemy) ---
-class Medicina(db.Model):
-    __tablename__ = 'medicinas'
-    id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(100), nullable=False)
-    precio = db.Column(db.Float, nullable=False)
-    cantidad = db.Column(db.Integer, nullable=False)
-
-# Crear la base de datos de SQLAlchemy
+# Inicializar SQLAlchemy y crear tablas automáticamente
+init_db(app)
 with app.app_context():
     db.create_all()
 
@@ -47,16 +38,27 @@ with app.app_context():
 def normalizar_nombre(texto):
     return texto.replace("_", " ")
 
-# --- RUTAS EXISTENTES (CITAS Y FACTURACIÓN) ---
+# --- RUTAS DE NAVEGACIÓN Y CITAS ---
 
 @app.route('/')
 def home():
     return render_template('index.html')
 
-@app.route('/cita/<paciente>')
-def ver_cita(paciente):
-    nombre = normalizar_nombre(paciente)
-    return render_template('about.html', nombre=nombre)
+@app.route('/agendar', methods=['GET', 'POST'])
+def agendar():
+    if request.method == 'POST':
+        paciente = request.form.get('paciente')
+        fecha = request.form.get('fecha')
+        hora = request.form.get('hora')
+        if paciente and fecha:
+            sistema.agendar_cita(paciente, fecha, hora)
+            return redirect(url_for('ver_todas_las_citas')) 
+    return render_template('agendar.html')
+
+@app.route('/citas')
+def ver_todas_las_citas():
+    citas = sistema.obtener_citas()
+    return render_template('lista_citas.html', citas=citas)
 
 @app.route('/factura', methods=['GET', 'POST'])
 def factura():
@@ -67,105 +69,55 @@ def factura():
         total = servicio_temp.calcular_iva() 
     return render_template('factura.html', total=total)
 
-@app.route('/agendar', methods=['GET', 'POST'])
-def agendar():
-    if request.method == 'POST':
-        paciente = request.form.get('paciente')
-        fecha = request.form.get('fecha')
-        hora = request.form.get('hora')
-        if not paciente or not fecha:
-            return "Error: Faltan datos", 400
-        sistema.agendar_cita(paciente, fecha, hora)
-        return redirect('/citas') 
-    return render_template('agendar.html')
-
-@app.route('/citas')
-def ver_todas_las_citas():
-    citas = sistema.obtener_citas()
-    return render_template('lista_citas.html', citas=citas)
-
-@app.route('/cambiar_cita', methods=['POST'])
-def cambiar_cita():
-    id_cita = request.form.get('id_cita')
-    nueva_fecha = request.form.get('nueva_fecha')
-    sistema.actualizar_cita(id_cita, nueva_fecha)
-    return redirect('/citas')
-
-# --- NUEVAS RUTAS: INVENTARIO Y PERSISTENCIA (Semana 12) ---
+# --- RUTAS DE INVENTARIO Y PERSISTENCIA AUTOMÁTICA ---
 
 @app.route('/inventario/nuevo', methods=['GET', 'POST'])
 def producto_form():
     if request.method == 'POST':
         try:
             nombre = request.form.get('nombre')
-            precio = request.form.get('precio')
-            cantidad = request.form.get('cantidad')
+            precio = float(request.form.get('precio', 0))
+            cantidad = int(request.form.get('cantidad', 0))
 
-            # 1. Guardar en SQLite (SQLAlchemy)
-            nueva = Medicina(nombre=nombre, precio=float(precio), cantidad=int(cantidad))
-            db.session.add(nueva)
+            # A. Persistencia en SQLite (SQLAlchemy)
+            nueva_medicina = Medicina(nombre=nombre, precio=precio, cantidad=cantidad)
+            db.session.add(nueva_medicina)
             db.session.commit()
 
-            # 2. Guardar en TXT
-            with open(os.path.join(DATA_PATH, "datos.txt"), "a", encoding="utf-8") as f:
-                f.write(f"{nombre}, {precio}, {cantidad}\n")
-
-            # 3. Guardar en JSON (Aseguramos que el archivo sea válido)
-            ruta_json = os.path.join(DATA_PATH, "datos.json")
-            datos_json = []
-            if os.path.exists(ruta_json) and os.path.getsize(ruta_json) > 0:
-                with open(ruta_json, "r", encoding="utf-8") as f:
-                    datos_json = json.load(f)
-            
-            datos_json.append({"nombre": nombre, "precio": precio, "cantidad": cantidad})
-            with open(ruta_json, "w", encoding="utf-8") as f:
-                json.dump(datos_json, f, indent=4)
-
-            # 4. Guardar en CSV
-            ruta_csv = os.path.join(DATA_PATH, "datos.csv")
-            existe_csv = os.path.isfile(ruta_csv)
-            with open(ruta_csv, "a", newline="", encoding="utf-8") as f:
-                writer = csv.writer(f)
-                if not existe_csv:
-                    writer.writerow(["Nombre", "Precio", "Cantidad"])
-                writer.writerow([nombre, precio, cantidad])
+            # B. Persistencia en Formatos Planos (Modularizada en inventario.py)
+            # Se guardan automáticamente en datos.txt, datos.json y datos.csv
+            guardar_en_archivos(nombre, precio, cantidad, DATA_PATH)
 
             return redirect(url_for('ver_datos'))
         
         except Exception as e:
-            # Si algo falla, esto te dirá qué fue exactamente en los logs de Render
-            print(f"Error al guardar: {e}")
-            return f"Error interno al procesar los datos: {e}", 500
+            print(f"Error en persistencia: {e}")
+            return f"Error interno: {e}", 500
     
     return render_template('producto_form.html')
 
 @app.route('/datos')
 def ver_datos():
-    # 1. Leer de SQL
+    # 1. Lectura desde SQLite
     medicinas_sql = Medicina.query.all()
 
-    # 2. Leer de TXT
-    datos_txt = []
-    if os.path.exists(os.path.join(DATA_PATH, "datos.txt")):
-        with open(os.path.join(DATA_PATH, "datos.txt"), "r") as f:
-            datos_txt = f.readlines()
-
-    # 3. Leer de JSON
+    # 2. Lectura desde JSON para la vista
+    ruta_json = os.path.join(DATA_PATH, "datos.json")
     datos_json = []
-    if os.path.exists(os.path.join(DATA_PATH, "datos.json")):
-        with open(os.path.join(DATA_PATH, "datos.json"), "r") as f:
+    if os.path.exists(ruta_json):
+        with open(ruta_json, "r", encoding="utf-8") as f:
             datos_json = json.load(f)
 
-    # 4. Leer de CSV
+    # 3. Lectura desde CSV para la vista
+    ruta_csv = os.path.join(DATA_PATH, "datos.csv")
     datos_csv = []
-    if os.path.exists(os.path.join(DATA_PATH, "datos.csv")):
-        with open(os.path.join(DATA_PATH, "datos.csv"), "r") as f:
+    if os.path.exists(ruta_csv):
+        with open(ruta_csv, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             datos_csv = list(reader)
 
     return render_template('datos.html', 
                            medicinas=medicinas_sql, 
-                           datos_txt=datos_txt, 
                            datos_json=datos_json, 
                            datos_csv=datos_csv)
 
