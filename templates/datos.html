@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4 text-primary">Sincronización de Inventario</h2>
+
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-dark text-white">Base de Datos SQLite (SQLAlchemy)</div>
+        <div class="card-body">
+            <table class="table">
+                <thead><tr><th>Nombre</th><th>Precio</th><th>Stock</th></tr></thead>
+                <tbody>
+                    {% for m in medicinas %}
+                    <tr><td>{{ m.nombre }}</td><td>${{ m.precio }}</td><td>{{ m.cantidad }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-warning">Archivo JSON</div>
+                <div class="card-body">
+                    <pre class="small">{% for item in datos_json %}{{ item }}{% endfor %}</pre>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">Archivo CSV</div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        {% for fila in datos_csv %}
+                        <li><i class="bi bi-file-earmark-spreadsheet"></i> {{ fila }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

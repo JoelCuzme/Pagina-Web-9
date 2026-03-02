@@ -11,11 +11,17 @@ from modelos import ServicioMedico
 app = Flask(__name__)
 sistema = GestionMedica()
 
-# --- CONFIGURACIÓN DE PERSISTENCIA (Semana 12) ---
-
-# 1. Configuración de SQLAlchemy (SQLite) para Inventario
+# --- CONFIGURACIÓN DE PERSISTENCIA ---
 basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'inventario/bd.db')
+
+# Aseguramos que las rutas sean absolutas y correctas para Linux (Render)
+INVENTARIO_DIR = os.path.join(basedir, 'inventario')
+DATA_PATH = os.path.join(INVENTARIO_DIR, 'data')
+
+# Crear directorios si no existen antes de configurar la DB
+os.makedirs(DATA_PATH, exist_ok=True)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(INVENTARIO_DIR, 'bd.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -90,48 +96,46 @@ def cambiar_cita():
 @app.route('/inventario/nuevo', methods=['GET', 'POST'])
 def producto_form():
     if request.method == 'POST':
-        nombre = request.form.get('nombre')
-        precio = request.form.get('precio')
-        cantidad = request.form.get('cantidad')
+        try:
+            nombre = request.form.get('nombre')
+            precio = request.form.get('precio')
+            cantidad = request.form.get('cantidad')
 
-        # --- PERSISTENCIA AUTOMÁTICA EN TODOS LOS FORMATOS ---
+            # 1. Guardar en SQLite (SQLAlchemy)
+            nueva = Medicina(nombre=nombre, precio=float(precio), cantidad=int(cantidad))
+            db.session.add(nueva)
+            db.session.commit()
 
-        # 1. SQLAlchemy (Base de datos SQLite)
-        nueva = Medicina(nombre=nombre, precio=float(precio), cantidad=int(cantidad))
-        db.session.add(nueva)
-        db.session.commit()
+            # 2. Guardar en TXT
+            with open(os.path.join(DATA_PATH, "datos.txt"), "a", encoding="utf-8") as f:
+                f.write(f"{nombre}, {precio}, {cantidad}\n")
 
-        # 2. Archivo TXT (Usando open en modo lectura/escritura)
-        with open(os.path.join(DATA_PATH, "datos.txt"), "a", encoding="utf-8") as f:
-            f.write(f"Producto: {nombre} | Precio: {precio} | Cantidad: {cantidad}\n")
-
-        # 3. Archivo JSON (Librería json + conversión a diccionario)
-        ruta_json = os.path.join(DATA_PATH, "datos.json")
-        datos_json = []
-        if os.path.exists(ruta_json):
-            with open(ruta_json, "r", encoding="utf-8") as f:
-                try:
+            # 3. Guardar en JSON (Aseguramos que el archivo sea válido)
+            ruta_json = os.path.join(DATA_PATH, "datos.json")
+            datos_json = []
+            if os.path.exists(ruta_json) and os.path.getsize(ruta_json) > 0:
+                with open(ruta_json, "r", encoding="utf-8") as f:
                     datos_json = json.load(f)
-                except json.JSONDecodeError:
-                    datos_json = []
-        
-        # Convertimos a diccionario antes de almacenar
-        nuevo_item = {"nombre": nombre, "precio": precio, "cantidad": cantidad}
-        datos_json.append(nuevo_item)
-        
-        with open(ruta_json, "w", encoding="utf-8") as f:
-            json.dump(datos_json, f, indent=4)
+            
+            datos_json.append({"nombre": nombre, "precio": precio, "cantidad": cantidad})
+            with open(ruta_json, "w", encoding="utf-8") as f:
+                json.dump(datos_json, f, indent=4)
 
-        # 4. Archivo CSV (Librería csv + métodos adecuados)
-        ruta_csv = os.path.join(DATA_PATH, "datos.csv")
-        existe_csv = os.path.isfile(ruta_csv)
-        with open(ruta_csv, "a", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            if not existe_csv:
-                writer.writerow(["Nombre", "Precio", "Cantidad"])
-            writer.writerow([nombre, precio, cantidad])
+            # 4. Guardar en CSV
+            ruta_csv = os.path.join(DATA_PATH, "datos.csv")
+            existe_csv = os.path.isfile(ruta_csv)
+            with open(ruta_csv, "a", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                if not existe_csv:
+                    writer.writerow(["Nombre", "Precio", "Cantidad"])
+                writer.writerow([nombre, precio, cantidad])
 
-        return redirect(url_for('ver_datos'))
+            return redirect(url_for('ver_datos'))
+        
+        except Exception as e:
+            # Si algo falla, esto te dirá qué fue exactamente en los logs de Render
+            print(f"Error al guardar: {e}")
+            return f"Error interno al procesar los datos: {e}", 500
     
     return render_template('producto_form.html')
 
