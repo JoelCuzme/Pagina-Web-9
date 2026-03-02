@@ -130,4 +130,6 @@ def factura():
     return render_template('factura.html', total=total) [cite: 247]
 
 if __name__ == '__main__':
-    app.run(debug=True) [cite: 439]
+    # Para local usará el puerto 5000, en Render usará el que asigne la nube
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
