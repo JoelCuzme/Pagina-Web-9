@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card p-4 shadow">
+    <h3>Registrar Medicina</h3>
+    <form method="POST">
+        <div class="mb-3">
+            <label>Nombre de Medicina</label>
+            <input type="text" name="nombre" class="form-control" required>
+        </div>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label>Precio</label>
+                <input type="number" step="0.01" name="precio" class="form-control" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label>Stock Inicial</label>
+                <input type="number" name="cantidad" class="form-control" required>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label>¿Dónde guardar?</label>
+            <select name="metodo" class="form-select">
+                <option value="SQL">Base de Datos (SQLite)</option>
+                <option value="JSON">Archivo JSON</option>
+                <option value="CSV">Archivo CSV</option>
+                <option value="TXT">Archivo de Texto</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Guardar Medicina</button>
+    </form>
+</div>
+{% endblock %}
