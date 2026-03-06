@@ -4,6 +4,7 @@ import csv
 from flask import Flask, render_template, request, redirect, url_for
 
 # 1. IMPORTACIONES MODULARES
+# Asegúrate de que estas carpetas tengan un archivo __init__.py vacío
 from inventario.bd import db, configurar_db
 from inventario.productos import Medicina
 from inventario.inventario import guardar_formatos_planos
@@ -13,8 +14,14 @@ from modelos import ServicioMedico
 app = Flask(__name__)
 
 # --- CONFIGURACIÓN DE RUTAS ---
+# Usamos una ruta absoluta para evitar errores en Render
 basedir = os.path.abspath(os.path.dirname(__file__))
-# Aseguramos que la DB esté en una ruta absoluta clara
+
+# Creamos la carpeta de datos si no existe al iniciar
+data_path = os.path.join(basedir, 'inventario', 'data')
+os.makedirs(data_path, exist_ok=True)
+
+# Configuración de SQLite (Base de Datos)
 path_sqlite = os.path.join(basedir, 'inventario', 'bd.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + path_sqlite
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -23,9 +30,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 configurar_db(app)
 sistema = GestionMedica()
 
-# Crear carpetas y tablas ANTES de que el servidor empiece a recibir tráfico
+# Inicializar Base de Datos dentro del contexto de la App
 with app.app_context():
-    os.makedirs(os.path.join(basedir, 'inventario', 'data'), exist_ok=True)
     db.create_all()
 
 # --- RUTAS ---
@@ -71,12 +77,8 @@ def producto_form():
 
 @app.route('/datos')
 def ver_datos():
-    # Simplificamos la lógica de lectura para evitar bloqueos de I/O
     try:
         medicinas_sql = Medicina.query.all()
-        
-        # Rutas de archivos planos
-        data_path = os.path.join(basedir, 'inventario', 'data')
         
         datos_json = []
         rj = os.path.join(data_path, "datos.json")
@@ -99,12 +101,12 @@ def factura():
     total = None
     if request.method == 'POST':
         subtotal = float(request.form.get('subtotal', 0))
+        # Asegúrate de que ServicioMedico acepte estos parámetros
         servicio = ServicioMedico(0, "Consulta", subtotal)
         total = servicio.calcular_iva()
     return render_template('factura.html', total=total)
 
-# IMPORTANTE PARA RENDER:
+# IMPORTANTE: Esto permite que corra local, Render usará Gunicorn
 if __name__ == '__main__':
-    # Usamos el puerto que Render nos asigne, o 5000 por defecto localmente
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
