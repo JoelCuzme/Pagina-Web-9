@@ -183,6 +183,24 @@ def listar_usuarios():
         cursor.close()
         db_mysql.close()
     return render_template('usuarios.html', usuarios=usuarios_data)
+@app.route('/usuarios/registrar', methods=['GET', 'POST'])
+def registrar_usuario():
+    if request.method == 'POST':
+        nombre = request.form.get('nombre')
+        mail = request.form.get('mail')
+        password = request.form.get('password')
+        
+        db_mysql = obtener_conexion()
+        if db_mysql:
+            cursor = db_mysql.cursor()
+            # Usamos los nombres exactos de tu tabla en phpMyAdmin
+            sql = "INSERT INTO usuarios (nombre, mail, password) VALUES (%s, %s, %s)"
+            cursor.execute(sql, (nombre, mail, password))
+            db_mysql.commit()
+            cursor.close()
+            db_mysql.close()
+            return redirect(url_for('listar_usuarios'))
+    return render_template('usuario_form.html')
 
 @app.route('/usuarios/nuevo', methods=['GET', 'POST'])
 def registrar_usuario():
@@ -230,5 +248,6 @@ def editar_servicio(id):
     db_mysql.close()
     return render_template('producto_form.html', servicio=servicio)
 if __name__ == '__main__':
+    # Render asigna un puerto dinámico mediante la variable de entorno PORT
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)

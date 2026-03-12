@@ -23,13 +23,17 @@
                     <a class="nav-link" href="/citas">Citas</a>
                     <a class="nav-link" href="/factura">Facturación</a>
                     
+                    <a class="nav-link" href="{{ url_for('listar_usuarios') }}">Usuarios</a>
+                    
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            Inventario
+                            Inventario (MySQL)
                         </a>
                         <ul class="dropdown-menu border-0 shadow-sm" aria-labelledby="navbarDropdown">
                             <li><a class="dropdown-item" href="/inventario/nuevo">Agregar Medicina</a></li>
-                            <li><a class="dropdown-item" href="/datos">Ver Todos los Datos</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('listar_servicios') }}">Gestionar MySQL</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/datos">Formatos Planos (JSON/CSV)</a></li>
                         </ul>
                     </li>
 

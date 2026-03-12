@@ -5,9 +5,9 @@ def obtener_conexion():
     try:
         conexion = mysql.connector.connect(
             host='localhost',
-            user='root',       # Asegúrate de que este sea tu usuario
-            password='',       # Tu contraseña de MySQL
-            database='gestion_medica' # Nombre de la BD que crearás
+            user='root',       # Usuario por defecto de phpMyAdmin
+            password='',       # Por defecto XAMPP no tiene contraseña
+            database='gestion_medica' # El nombre que le diste en phpMyAdmin
         )
         if conexion.is_connected():
             return conexion
