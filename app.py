@@ -4,24 +4,21 @@ import csv
 from flask import Flask, render_template, request, redirect, url_for
 
 # 1. IMPORTACIONES MODULARES
-# Asegúrate de que estas carpetas tengan un archivo __init__.py vacío
 from inventario.bd import db, configurar_db
 from inventario.productos import Medicina
 from inventario.inventario import guardar_formatos_planos
 from gestion import GestionMedica
 from modelos import ServicioMedico
 from Conexion.conexion import obtener_conexion
+
 app = Flask(__name__)
 
 # --- CONFIGURACIÓN DE RUTAS ---
-# Usamos una ruta absoluta para evitar errores en Render
 basedir = os.path.abspath(os.path.dirname(__file__))
-
-# Creamos la carpeta de datos si no existe al iniciar
 data_path = os.path.join(basedir, 'inventario', 'data')
 os.makedirs(data_path, exist_ok=True)
 
-# Configuración de SQLite (Base de Datos)
+# Configuración de SQLite
 path_sqlite = os.path.join(basedir, 'inventario', 'bd.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + path_sqlite
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -30,11 +27,10 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 configurar_db(app)
 sistema = GestionMedica()
 
-# Inicializar Base de Datos dentro del contexto de la App
 with app.app_context():
     db.create_all()
 
-# --- RUTAS ---
+# --- RUTAS DE NAVEGACIÓN GENERAL ---
 
 @app.route('/')
 def home():
@@ -55,6 +51,8 @@ def agendar():
 def ver_todas_las_citas():
     citas = sistema.obtener_citas()
     return render_template('lista_citas.html', citas=citas)
+
+# --- RUTAS DE INVENTARIO (SQLITE Y FORMATOS PLANOS) ---
 
 @app.route('/inventario/nuevo', methods=['GET', 'POST'])
 def producto_form():
@@ -79,7 +77,6 @@ def producto_form():
 def ver_datos():
     try:
         medicinas_sql = Medicina.query.all()
-        
         datos_json = []
         rj = os.path.join(data_path, "datos.json")
         if os.path.exists(rj) and os.path.getsize(rj) > 0:
@@ -101,10 +98,12 @@ def factura():
     total = None
     if request.method == 'POST':
         subtotal = float(request.form.get('subtotal', 0))
-        # Asegúrate de que ServicioMedico acepte estos parámetros
         servicio = ServicioMedico(0, "Consulta", subtotal)
         total = servicio.calcular_iva()
     return render_template('factura.html', total=total)
+
+# --- RUTAS MYSQL: SERVICIOS ---
+
 @app.route('/servicios_mysql')
 def listar_servicios():
     db_mysql = obtener_conexion()
@@ -117,7 +116,6 @@ def listar_servicios():
         return render_template('datos.html', servicios=servicios_data)
     return "Error en la conexión a MySQL", 500
 
-# --- NUEVA RUTA: REGISTRAR SERVICIO EN MYSQL ---
 @app.route('/servicios_mysql/nuevo', methods=['POST'])
 def nuevo_servicio_mysql():
     nombre = request.form.get('nombre')
@@ -134,7 +132,6 @@ def nuevo_servicio_mysql():
         db_mysql.close()
         return redirect(url_for('listar_servicios'))
     return "Error al guardar en MySQL", 500
-# IMPORTANTE: Esto permite que corra local, Render usará Gunicorn
 
 @app.route('/servicios_mysql/eliminar/<int:id>')
 def eliminar_servicio(id):
@@ -147,16 +144,18 @@ def eliminar_servicio(id):
         db_mysql.close()
     return redirect(url_for('listar_servicios'))
 
-# --- MODIFICAR REGISTRO (VISTA Y LÓGICA) ---
 @app.route('/servicios_mysql/editar/<int:id>', methods=['GET', 'POST'])
 def editar_servicio(id):
     db_mysql = obtener_conexion()
+    if not db_mysql:
+        return "Error de conexión", 500
+        
     cursor = db_mysql.cursor(dictionary=True)
 
     if request.method == 'POST':
         nombre = request.form.get('nombre')
-        precio = request.form.get('precio')
-        stock = request.form.get('stock')
+        precio = float(request.form.get('precio'))
+        stock = int(request.form.get('stock'))
         
         sql = "UPDATE servicios SET nombre=%s, precio=%s, stock_disponible=%s WHERE id_servicio=%s"
         cursor.execute(sql, (nombre, precio, stock, id))
@@ -165,13 +164,14 @@ def editar_servicio(id):
         db_mysql.close()
         return redirect(url_for('listar_servicios'))
     
-    # Si es GET, buscamos el servicio para llenar el formulario
     cursor.execute("SELECT * FROM servicios WHERE id_servicio = %s", (id,))
     servicio = cursor.fetchone()
     cursor.close()
     db_mysql.close()
     return render_template('producto_form.html', servicio=servicio)
-# --- GESTIÓN DE USUARIOS (Punto 3) ---
+
+# --- RUTAS MYSQL: USUARIOS ---
+
 @app.route('/usuarios')
 def listar_usuarios():
     db_mysql = obtener_conexion()
@@ -183,6 +183,7 @@ def listar_usuarios():
         cursor.close()
         db_mysql.close()
     return render_template('usuarios.html', usuarios=usuarios_data)
+
 @app.route('/usuarios/registrar', methods=['GET', 'POST'])
 def registrar_usuario():
     if request.method == 'POST':
@@ -193,7 +194,6 @@ def registrar_usuario():
         db_mysql = obtener_conexion()
         if db_mysql:
             cursor = db_mysql.cursor()
-            # Usamos los nombres exactos de tu tabla en phpMyAdmin
             sql = "INSERT INTO usuarios (nombre, mail, password) VALUES (%s, %s, %s)"
             cursor.execute(sql, (nombre, mail, password))
             db_mysql.commit()
@@ -202,52 +202,7 @@ def registrar_usuario():
             return redirect(url_for('listar_usuarios'))
     return render_template('usuario_form.html')
 
-@app.route('/usuarios/nuevo', methods=['GET', 'POST'])
-def registrar_usuario():
-    if request.method == 'POST':
-        nombre = request.form.get('nombre')
-        mail = request.form.get('mail')
-        password = request.form.get('password')
-        
-        db_mysql = obtener_conexion()
-        if db_mysql:
-            cursor = db_mysql.cursor()
-            cursor.execute("INSERT INTO usuarios (nombre, mail, password) VALUES (%s, %s, %s)", 
-                           (nombre, mail, password))
-            db_mysql.commit()
-            cursor.close()
-            db_mysql.close()
-        return redirect(url_for('listar_usuarios'))
-    return render_template('usuario_form.html')
-
-# --- MODIFICAR REGISTRO (Punto 4) ---
-@app.route('/servicios/editar/<int:id>', methods=['GET', 'POST'])
-def editar_servicio(id):
-    db_mysql = obtener_conexion()
-    cursor = db_mysql.cursor(dictionary=True)
-
-    if request.method == 'POST':
-        nombre = request.form.get('nombre')
-        precio = float(request.form.get('precio'))
-        stock = int(request.form.get('stock'))
-        
-        cursor.execute("""
-            UPDATE servicios 
-            SET nombre=%s, precio=%s, stock_disponible=%s 
-            WHERE id_servicio=%s
-        """, (nombre, precio, stock, id))
-        db_mysql.commit()
-        cursor.close()
-        db_mysql.close()
-        return redirect(url_for('listar_servicios'))
-    
-    # Cargar datos actuales para el formulario
-    cursor.execute("SELECT * FROM servicios WHERE id_servicio = %s", (id,))
-    servicio = cursor.fetchone()
-    cursor.close()
-    db_mysql.close()
-    return render_template('producto_form.html', servicio=servicio)
+# --- INICIO DE LA APP ---
 if __name__ == '__main__':
-    # Render asigna un puerto dinámico mediante la variable de entorno PORT
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
