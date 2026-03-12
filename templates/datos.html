@@ -32,20 +32,6 @@
 
     <hr class="my-5">
 
-    <h3>📂 Respaldo en Archivos Planos</h3>
-    <div class="row">
-        <div class="col-md-6">
-            <h4>Datos JSON</h4>
-            <pre class="bg-light p-3 border">{{ datos_json | tojson(indent=2) }}</pre>
-        </div>
-        <div class="col-md-6">
-            <h4>Datos CSV (Vista Rápida)</h4>
-            <ul class="list-group">
-                {% for fila in datos_csv %}
-                <li class="list-group-item">{{ fila.Nombre }} - ${{ fila.Precio }}</li>
-                {% endfor %}
-            </ul>
-        </div>
-    </div>
+    
 </div>
 {% endblock %}
