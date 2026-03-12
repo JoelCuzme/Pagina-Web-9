@@ -10,7 +10,7 @@ from inventario.productos import Medicina
 from inventario.inventario import guardar_formatos_planos
 from gestion import GestionMedica
 from modelos import ServicioMedico
-
+from Conexion.conexion import obtener_conexion
 app = Flask(__name__)
 
 # --- CONFIGURACIÓN DE RUTAS ---
@@ -105,8 +105,130 @@ def factura():
         servicio = ServicioMedico(0, "Consulta", subtotal)
         total = servicio.calcular_iva()
     return render_template('factura.html', total=total)
+@app.route('/servicios_mysql')
+def listar_servicios():
+    db_mysql = obtener_conexion()
+    if db_mysql:
+        cursor = db_mysql.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM servicios")
+        servicios_data = cursor.fetchall()
+        cursor.close()
+        db_mysql.close()
+        return render_template('datos.html', servicios=servicios_data)
+    return "Error en la conexión a MySQL", 500
 
+# --- NUEVA RUTA: REGISTRAR SERVICIO EN MYSQL ---
+@app.route('/servicios_mysql/nuevo', methods=['POST'])
+def nuevo_servicio_mysql():
+    nombre = request.form.get('nombre')
+    precio = request.form.get('precio')
+    stock = request.form.get('stock', 100)
+
+    db_mysql = obtener_conexion()
+    if db_mysql:
+        cursor = db_mysql.cursor()
+        sql = "INSERT INTO servicios (nombre, precio, stock_disponible) VALUES (%s, %s, %s)"
+        cursor.execute(sql, (nombre, precio, stock))
+        db_mysql.commit()
+        cursor.close()
+        db_mysql.close()
+        return redirect(url_for('listar_servicios'))
+    return "Error al guardar en MySQL", 500
 # IMPORTANTE: Esto permite que corra local, Render usará Gunicorn
+
+@app.route('/servicios_mysql/eliminar/<int:id>')
+def eliminar_servicio(id):
+    db_mysql = obtener_conexion()
+    if db_mysql:
+        cursor = db_mysql.cursor()
+        cursor.execute("DELETE FROM servicios WHERE id_servicio = %s", (id,))
+        db_mysql.commit()
+        cursor.close()
+        db_mysql.close()
+    return redirect(url_for('listar_servicios'))
+
+# --- MODIFICAR REGISTRO (VISTA Y LÓGICA) ---
+@app.route('/servicios_mysql/editar/<int:id>', methods=['GET', 'POST'])
+def editar_servicio(id):
+    db_mysql = obtener_conexion()
+    cursor = db_mysql.cursor(dictionary=True)
+
+    if request.method == 'POST':
+        nombre = request.form.get('nombre')
+        precio = request.form.get('precio')
+        stock = request.form.get('stock')
+        
+        sql = "UPDATE servicios SET nombre=%s, precio=%s, stock_disponible=%s WHERE id_servicio=%s"
+        cursor.execute(sql, (nombre, precio, stock, id))
+        db_mysql.commit()
+        cursor.close()
+        db_mysql.close()
+        return redirect(url_for('listar_servicios'))
+    
+    # Si es GET, buscamos el servicio para llenar el formulario
+    cursor.execute("SELECT * FROM servicios WHERE id_servicio = %s", (id,))
+    servicio = cursor.fetchone()
+    cursor.close()
+    db_mysql.close()
+    return render_template('producto_form.html', servicio=servicio)
+# --- GESTIÓN DE USUARIOS (Punto 3) ---
+@app.route('/usuarios')
+def listar_usuarios():
+    db_mysql = obtener_conexion()
+    usuarios_data = []
+    if db_mysql:
+        cursor = db_mysql.cursor(dictionary=True)
+        cursor.execute("SELECT id_usuario, nombre, mail FROM usuarios")
+        usuarios_data = cursor.fetchall()
+        cursor.close()
+        db_mysql.close()
+    return render_template('usuarios.html', usuarios=usuarios_data)
+
+@app.route('/usuarios/nuevo', methods=['GET', 'POST'])
+def registrar_usuario():
+    if request.method == 'POST':
+        nombre = request.form.get('nombre')
+        mail = request.form.get('mail')
+        password = request.form.get('password')
+        
+        db_mysql = obtener_conexion()
+        if db_mysql:
+            cursor = db_mysql.cursor()
+            cursor.execute("INSERT INTO usuarios (nombre, mail, password) VALUES (%s, %s, %s)", 
+                           (nombre, mail, password))
+            db_mysql.commit()
+            cursor.close()
+            db_mysql.close()
+        return redirect(url_for('listar_usuarios'))
+    return render_template('usuario_form.html')
+
+# --- MODIFICAR REGISTRO (Punto 4) ---
+@app.route('/servicios/editar/<int:id>', methods=['GET', 'POST'])
+def editar_servicio(id):
+    db_mysql = obtener_conexion()
+    cursor = db_mysql.cursor(dictionary=True)
+
+    if request.method == 'POST':
+        nombre = request.form.get('nombre')
+        precio = float(request.form.get('precio'))
+        stock = int(request.form.get('stock'))
+        
+        cursor.execute("""
+            UPDATE servicios 
+            SET nombre=%s, precio=%s, stock_disponible=%s 
+            WHERE id_servicio=%s
+        """, (nombre, precio, stock, id))
+        db_mysql.commit()
+        cursor.close()
+        db_mysql.close()
+        return redirect(url_for('listar_servicios'))
+    
+    # Cargar datos actuales para el formulario
+    cursor.execute("SELECT * FROM servicios WHERE id_servicio = %s", (id,))
+    servicio = cursor.fetchone()
+    cursor.close()
+    db_mysql.close()
+    return render_template('producto_form.html', servicio=servicio)
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
