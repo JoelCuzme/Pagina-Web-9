@@ -18,28 +18,34 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <div class="navbar-nav ms-auto">
+                <div class="navbar-nav ms-auto align-items-center">
                     <a class="nav-link" href="/">Inicio</a>
-                    <a class="nav-link" href="/citas">Citas</a>
-                    <a class="nav-link" href="/factura">Facturación</a>
                     
-                    <a class="nav-link" href="{{ url_for('listar_usuarios') }}">Usuarios</a>
-                    
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            Inventario (MySQL)
-                        </a>
-                        <ul class="dropdown-menu border-0 shadow-sm" aria-labelledby="navbarDropdown">
-                            <li><a class="dropdown-item" href="/inventario/nuevo">Agregar Medicina</a></li>
-    
-                            <li><a class="dropdown-item" href="{{ url_for('ver_datos') }}">Gestionar MySQL</a></li>
-    
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="/datos">Formatos Planos (JSON/CSV)</a></li>
-                        </ul>
-                    </li>
+                    {% if current_user.is_authenticated %}
+                        <a class="nav-link" href="/citas">Citas</a>
+                        <a class="nav-link" href="/factura">Facturación</a>
+                        <a class="nav-link" href="{{ url_for('listar_usuarios') }}">Usuarios</a>
+                        
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                                Inventario
+                            </a>
+                            <ul class="dropdown-menu border-0 shadow-sm" aria-labelledby="navbarDropdown">
+                                <li><a class="dropdown-item" href="/inventario/nuevo">Agregar Medicina</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('ver_datos') }}">Gestionar MySQL</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="/datos">Formatos Planos</a></li>
+                            </ul>
+                        </li>
 
-                    <a class="nav-link btn btn-primary text-white ms-lg-3" href="#">Telemedicina</a>
+                        <div class="ms-lg-3 d-flex align-items-center">
+                            <span class="text-muted me-3 small">Hola, {{ current_user.nombre }}</span>
+                            <a class="btn btn-outline-danger btn-sm" href="{{ url_for('logout') }}">Salir</a>
+                        </div>
+                    {% else %}
+                        <a class="nav-link" href="{{ url_for('login') }}">Iniciar Sesión</a>
+                        <a class="nav-link btn btn-primary text-white ms-lg-3" href="{{ url_for('registrar_usuario') }}">Registrarse</a>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -47,7 +53,20 @@
 
     {% block hero %}{% endblock %}
 
-    <div class="container mt-5">
+    <div class="container mt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="container mt-4">
         {% block content %}{% endblock %}
     </div>
 
