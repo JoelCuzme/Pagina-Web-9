@@ -19,7 +19,7 @@ login_manager.login_message_category = "info"
 
 @login_manager.user_loader
 def load_user(user_id):
-    # Consistencia: Usamos el ID de la base de datos de Aiven
+    # Usamos id_usuario como alias 'id' para que Flask-Login no se confunda
     res = ejecutar_query("SELECT id_usuario as id, nombre, mail as email, password FROM usuarios WHERE id_usuario = %s", (user_id,), es_consulta=True)
     if res:
         u = res[0]
@@ -62,8 +62,7 @@ def login():
         mail = request.form.get('mail')
         password = request.form.get('password')
         
-        user_data = ejecutar_query("SELECT id_usuario as id, nombre, mail as email, password FROM usuarios WHERE mail = %s", (mail,), es_consulta=True)
-        
+        user_data = ejecutar_query("SELECT id_usuario as id, nombre, mail as email, password FROM usuarios WHERE mail = %s", (mail,), es_consulta=True)        
         # Validación de usuario y contraseña (Texto plano según tu solicitud actual)
         if user_data and user_data[0]['password'] == password:
             user_obj = Usuario(

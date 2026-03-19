@@ -9,15 +9,13 @@ class GestionMedica:
         self.cargar_desde_db()
 
     def cargar_desde_db(self):
-        # Importamos aquí para evitar importación circular con app.py
         from app import ejecutar_query
-        
-        rows = ejecutar_query("SELECT id, nombre, precio, stock_disponible FROM servicios", es_consulta=True)
+        # Usamos los nombres exactos de tu imagen: id_servicio, nombre, precio, stock_disponible
+        rows = ejecutar_query("SELECT id_servicio, nombre, precio, stock_disponible FROM servicios", es_consulta=True)
         if rows:
             for row in rows:
-                # row ahora es un diccionario gracias a dictionary=True en tu ejecutar_query
                 s = ServicioMedico(
-                    id=row['id'], 
+                    id=row['id_servicio'], 
                     nombre=row['nombre'], 
                     precio=row['precio'], 
                     stock_disponible=row['stock_disponible']
