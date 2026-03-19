@@ -1,29 +1,49 @@
 {% extends "base.html" %}
+
+{% block title %}Gestión de Usuarios{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
-    <h2 class="text-primary">Lista de Usuarios (MySQL)</h2>
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nombre</th>
-                        <th>Email</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for u in usuarios %}
-                    <tr>
-                        <td>{{ u.id_usuario }}</td>
-                        <td>{{ u.nombre }}</td>
-                        <td>{{ u.mail }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            <a href="{{ url_for('registrar_usuario') }}" class="btn btn-primary">Nuevo Usuario</a>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-primary"><i class="bi bi-people-fill"></i> Lista de Usuarios (MariaDB)</h2>
+        <a href="{{ url_for('registrar_usuario') }}" class="btn btn-primary">
+            <i class="bi bi-person-plus"></i> Nuevo Usuario
+        </a>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">ID</th>
+                            <th>Nombre Completo</th>
+                            <th>Correo Electrónico</th>
+                            <th class="text-center">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in usuarios %}
+                        <tr>
+                            <td class="ps-4"><span class="text-muted">#{{ u['id_usuario'] }}</span></td>
+                            <td class="fw-bold">{{ u['nombre'] }}</td>
+                            <td>{{ u['mail'] }}</td>
+                            <td class="text-center">
+                                <span class="badge rounded-pill bg-success-subtle text-success border border-success">Activo</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
+    
+    {% if not usuarios %}
+    <div class="alert alert-warning mt-3 text-center">
+        No se encontraron usuarios registrados en la base de datos.
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

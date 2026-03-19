@@ -1,25 +1,47 @@
 {% extends "base.html" %}
+
+{% block title %}Agendar Cita{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
-        <div class="card p-4">
-            <h3 class="text-primary mb-4">Agendar Nueva Cita</h3>
-            <form method="POST">
+        <div class="card p-4 shadow-lg border-0 rounded-4">
+            <h3 class="text-primary mb-4 text-center">
+                <i class="bi bi-calendar-plus"></i> Agendar Nueva Cita
+            </h3>
+            <p class="text-muted small text-center mb-4">
+                La cita se guardará automáticamente en el sistema de SaludTotal+.
+            </p>
+
+            <form action="{{ url_for('agendar') }}" method="POST">
                 <div class="mb-3">
-                    <label class="form-label">Nombre del Paciente</label>
-                    <input type="text" name="paciente" class="form-control" placeholder="Ej: Juan Pérez" required>
+                    <label class="form-label fw-bold">Nombre del Paciente</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+                        <input type="text" name="paciente" class="form-control" placeholder="Ej: Juan Pérez" required>
+                    </div>
                 </div>
+
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Fecha</label>
+                        <label class="form-label fw-bold">Fecha</label>
                         <input type="date" name="fecha" class="form-control" required>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Hora</label>
+                        <label class="form-label fw-bold">Hora</label>
                         <input type="time" name="hora" class="form-control" required>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary w-100 py-2">CONFIRMAR CITA</button>
+
+                <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-pill mt-3">
+                    <i class="bi bi-check-circle"></i> CONFIRMAR CITA
+                </button>
+
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('ver_todas_las_citas') }}" class="text-decoration-none text-muted small">
+                        Cancelar y volver a la lista
+                    </a>
+                </div>
             </form>
         </div>
     </div>

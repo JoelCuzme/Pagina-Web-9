@@ -19,17 +19,16 @@ login_manager.login_message_category = "info"
 
 @login_manager.user_loader
 def load_user(user_id):
-    # Usamos id_usuario como alias 'id' para que Flask-Login no se confunda
-    # Ajustado según tu tabla en DBeaver
+    # Usamos id_usuario como alias 'id' para Flask-Login
     res = ejecutar_query("SELECT id_usuario as id, nombre, mail as email, password FROM usuarios WHERE id_usuario = %s", (user_id,), es_consulta=True)
     if res:
         u = res[0]
         return Usuario(id=u['id'], nombre=u['nombre'], email=u['email'], password=u['password'])
     return None
 
-# --- FUNCIONES DE APOYO (CENTRALIZADAS) ---
+# --- FUNCIONES DE APOYO (DB CENTRALIZADA) ---
 def ejecutar_query(sql, params=None, es_consulta=False):
-    """Ejecuta comandos SQL en MariaDB. Se eliminó flash() para evitar errores de contexto en Render."""
+    """Ejecuta comandos SQL en MariaDB de forma segura."""
     db_mysql = obtener_conexion()
     resultado = None
     if db_mysql:
@@ -42,7 +41,6 @@ def ejecutar_query(sql, params=None, es_consulta=False):
                 db_mysql.commit()
             cursor.close()
         except Exception as e:
-            # Imprimimos en consola para ver el error en los logs de Render
             print(f"Error en la base de datos: {e}")
         finally:
             db_mysql.close()
@@ -51,7 +49,9 @@ def ejecutar_query(sql, params=None, es_consulta=False):
 # 2. INICIALIZACIÓN DE COMPONENTES
 sistema_citas = GestionMedica()
 
-# --- RUTAS DE AUTENTICACIÓN ---
+# ==========================================
+#        RUTAS DE AUTENTICACIÓN
+# ==========================================
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -62,7 +62,6 @@ def login():
         mail = request.form.get('mail')
         password = request.form.get('password')
         
-        # Ajustado para usar id_usuario de tu MariaDB
         user_data = ejecutar_query("SELECT id_usuario as id, nombre, mail as email, password FROM usuarios WHERE mail = %s", (mail,), es_consulta=True)        
         
         if user_data and user_data[0]['password'] == password:
@@ -106,14 +105,15 @@ def registrar_usuario():
         
     return render_template('usuario_form.html')
 
-# NUEVA RUTA: Corregida para que coincida con tu base.html (listar_usuarios)
 @app.route('/usuarios')
 @login_required
 def listar_usuarios():
-    usuarios = ejecutar_query("SELECT id_usuario, nombre, mail FROM usuarios", es_consulta=True)
-    return render_template('usuarios_lista.html', usuarios=usuarios)
+    usuarios_db = ejecutar_query("SELECT id_usuario, nombre, mail FROM usuarios", es_consulta=True)
+    return render_template('usuarios_lista.html', usuarios=usuarios_db or [])
 
-# --- RUTAS DE NAVEGACIÓN GENERAL ---
+# ==========================================
+#        RUTAS DE CITAS MÉDICAS
+# ==========================================
 
 @app.route('/')
 def home():
@@ -138,7 +138,23 @@ def ver_todas_las_citas():
     citas = sistema_citas.obtener_citas()
     return render_template('lista_citas.html', citas=citas)
 
-# --- RUTAS DE INVENTARIO ---
+@app.route('/cambiar_cita', methods=['POST'])
+@login_required
+def cambiar_cita():
+    id_cita = request.form.get('id_cita')
+    nueva_fecha = request.form.get('nueva_fecha')
+    
+    if id_cita and nueva_fecha:
+        sql = "UPDATE citas SET fecha = %s WHERE id = %s"
+        ejecutar_query(sql, (nueva_fecha, id_cita))
+        flash("¡Fecha actualizada correctamente!", "success")
+    else:
+        flash("No se pudo actualizar la cita.", "danger")
+    return redirect(url_for('ver_todas_las_citas'))
+
+# ==========================================
+#        RUTAS DE INVENTARIO Y FACTURACIÓN
+# ==========================================
 
 @app.route('/inventario/nuevo', methods=['GET', 'POST'])
 @login_required
@@ -149,7 +165,6 @@ def producto_form():
             precio = float(request.form.get('precio', 0))
             stock = int(request.form.get('cantidad', 0))
             
-            # Guardamos con los nombres de columna de tu DBeaver
             ejecutar_query("INSERT INTO servicios (nombre, precio, stock_disponible) VALUES (%s, %s, %s)", (nombre, precio, stock))
             guardar_formatos_planos(nombre, precio, stock)
             
@@ -157,15 +172,39 @@ def producto_form():
             return redirect(url_for('ver_datos'))
         except ValueError:
             flash('Error en los datos numéricos introducidos.', 'danger')
-            
     return render_template('producto_form.html')
 
 @app.route('/datos')
 @login_required
 def ver_datos():
-    # Ajustado a id_servicio según tu imagen de DBeaver
     servicios_mysql = ejecutar_query("SELECT id_servicio, nombre, precio, stock_disponible FROM servicios", es_consulta=True) or []
     return render_template('datos.html', servicios=servicios_mysql)
+
+@app.route('/inventario/eliminar/<int:id>')
+@login_required
+def eliminar_servicio(id):
+    sql = "DELETE FROM servicios WHERE id_servicio = %s"
+    ejecutar_query(sql, (id,))
+    flash('Producto eliminado correctamente.', 'warning')
+    return redirect(url_for('ver_datos'))
+
+@app.route('/factura', methods=['GET', 'POST'])
+@login_required
+def factura():
+    total = None
+    if request.method == 'POST':
+        try:
+            subtotal = float(request.form.get('subtotal', 0))
+            iva = subtotal * 0.15
+            total = "{:.2f}".format(subtotal + iva)
+            flash(f"Cálculo realizado: Subtotal ${subtotal} + IVA", "success")
+        except ValueError:
+            flash("Por favor, ingresa un número válido.", "danger")
+    return render_template('factura.html', total=total)
+
+# ==========================================
+#        EJECUCIÓN DEL SERVIDOR
+# ==========================================
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))

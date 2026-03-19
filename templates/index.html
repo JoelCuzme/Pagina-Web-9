@@ -2,10 +2,10 @@
 {% block title %}Inicio{% endblock %}
 
 {% block hero %}
-<div class="hero-section text-center">
+<div class="hero-section text-center py-5 bg-primary text-white mb-5 rounded-bottom-4 shadow">
     <div class="container">
         <h1 class="display-4 fw-bold">Tu Salud, Nuestra Prioridad</h1>
-        <p class="lead">Gestión médica profesional con tecnología de vanguardia.</p>
+        <p class="lead">Gestión médica profesional con tecnología de vanguardia conectada a la nube.</p>
     </div>
 </div>
 {% endblock %}
@@ -13,68 +13,67 @@
 {% block content %}
 <div class="row g-4">
     <div class="col-md-4">
-        <div class="card p-4 text-center">
-            <div class="mb-3"><i class="display-4 text-primary">📅</i></div>
-            <h4>Gestión de Citas</h4>
-            <p class="text-muted">Consulta y confirma las citas de tus pacientes de forma remota.</p>
-            <a href="/citas" class="btn btn-outline-primary w-100">Ver Citas Agendadas</a>        </div>
-    </div>
-
-    <div class="col-md-4">
-        <div class="card p-4 text-center border-top border-primary border-5">
-            <div class="mb-3"><i class="display-4 text-success">💳</i></div>
-            <h4>Facturación Online</h4>
-            <p class="text-muted">Calcula honorarios médicos e impuestos automáticamente.</p>
-            <a href="/factura" class="btn btn-success w-100">Calcular Factura</a>
+        <div class="card h-100 p-4 text-center shadow-sm border-0 hover-up">
+            <div class="mb-3"><i class="display-4 text-primary bi bi-calendar-event">📅</i></div>
+            <h4 class="fw-bold">Gestión de Citas</h4>
+            <p class="text-muted small">Consulta y confirma las citas de tus pacientes de forma remota y segura.</p>
+            <a href="{{ url_for('ver_todas_las_citas') }}" class="btn btn-outline-primary w-100 mt-auto">Ver Citas Agendadas</a>
         </div>
     </div>
 
     <div class="col-md-4">
-        <div class="card p-4 text-center">
-            <div class="mb-3"><i class="display-4 text-info">🏥</i></div>
-            <h4>Servicios Médicos</h4>
-            <p class="text-muted">Administra el inventario de servicios y especialidades.</p>
-            <button class="btn btn-info text-white w-100">Ver Catálogo</button>
+        <div class="card h-100 p-4 text-center border-top border-primary border-5 shadow-sm hover-up">
+            <div class="mb-3"><i class="display-4 text-success bi bi-credit-card">💳</i></div>
+            <h4 class="fw-bold">Facturación Online</h4>
+            <p class="text-muted small">Calcula honorarios médicos e impuestos automáticamente (IVA 15%).</p>
+            <a href="{{ url_for('factura') }}" class="btn btn-success w-100 mt-auto">Calcular Factura</a>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card h-100 p-4 text-center shadow-sm border-0 hover-up">
+            <div class="mb-3"><i class="display-4 text-info bi bi-hospital">🏥</i></div>
+            <h4 class="fw-bold">Servicios Médicos</h4>
+            <p class="text-muted small">Administra el inventario de medicamentos y servicios disponibles.</p>
+            <a href="{{ url_for('ver_datos') }}" class="btn btn-info text-white w-100 mt-auto">Ver Catálogo</a>
         </div>
     </div>
 </div>
+
 <section class="mt-5 py-5 bg-light rounded-4 shadow-sm">
     <div class="container">
         <div class="text-center mb-5">
-            <h2 class="fw-bold">Últimas Noticias y Artículos de Salud</h2>
-            <p class="text-muted">Toda la información de interés y consejos de salud para nuestra comunidad.</p>
+            <h2 class="fw-bold text-dark">Últimas Noticias y Artículos de Salud</h2>
+            <p class="text-muted">Información de interés para nuestra comunidad médica.</p>
         </div>
 
         <div class="row g-4">
             <div class="col-md-4">
-                <div class="card h-100 border-0 shadow-sm hover-up">
-                    <img src="https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=500" class="card-img-top rounded-top-4" alt="Telemedicina">
+                <div class="card h-100 border-0 shadow-sm overflow-hidden">
+                    <img src="https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=500" class="card-img-top" alt="Telemedicina" style="height: 200px; object-fit: cover;">
                     <div class="card-body">
                         <h5 class="card-title fw-bold text-primary">Innovación en Telemedicina</h5>
-                        <p class="card-text text-muted">Descubre cómo la tecnología está transformando la atención médica remota en 2026.</p>
-                        
+                        <p class="card-text text-muted small">Descubre cómo la tecnología está transformando la atención remota este 2026.</p>
                     </div>
                 </div>
             </div>
 
             <div class="col-md-4">
-                <div class="card h-100 border-0 shadow-sm hover-up">
-                    <img src="https://www.cartv.es/files/sostenible/Salud%20y%20bienestar/grupo-salud.jpg?89416ab567" class="card-img-top rounded-top-4" alt="Prevención">
+                <div class="card h-100 border-0 shadow-sm overflow-hidden">
+                    <img src="https://www.cartv.es/files/sostenible/Salud%20y%20bienestar/grupo-salud.jpg?89416ab567" class="card-img-top" alt="Prevención" style="height: 200px; object-fit: cover;">
                     <div class="card-body">
                         <h5 class="card-title fw-bold text-primary">Prevención y Bienestar</h5>
-                        <p class="card-text text-muted">Consejos prácticos para mantener un estilo de vida saludable y prevenir enfermedades comunes.</p>
-                        
+                        <p class="card-text text-muted small">Consejos prácticos para un estilo de vida saludable y preventivo.</p>
                     </div>
                 </div>
             </div>
 
             <div class="col-md-4">
-                <div class="card h-100 border-0 shadow-sm hover-up">
-                    <img src="https://images.unsplash.com/photo-1581056771107-24ca5f033842?auto=format&fit=crop&w=500" class="card-img-top rounded-top-4" alt="Tecnología Médica">
+                <div class="card h-100 border-0 shadow-sm overflow-hidden">
+                    <img src="https://images.unsplash.com/photo-1581056771107-24ca5f033842?auto=format&fit=crop&w=500" class="card-img-top" alt="Tecnología Médica" style="height: 200px; object-fit: cover;">
                     <div class="card-body">
-                        <h5 class="card-title fw-bold text-primary">Gestión de Insumos Eficiente</h5>
-                        <p class="card-text text-muted">Cómo nuestro sistema de inventario ayuda a reducir el desperdicio en clínicas modernas.</p>
-                        
+                        <h5 class="card-title fw-bold text-primary">Gestión de Insumos</h5>
+                        <p class="card-text text-muted small">Cómo nuestro sistema de inventario reduce el desperdicio en clínicas modernas.</p>
                     </div>
                 </div>
             </div>

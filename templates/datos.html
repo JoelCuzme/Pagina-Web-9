@@ -2,36 +2,57 @@
 {% block title %}Inventario General{% endblock %}
 
 {% block content %}
-<div class="container">
-    <h2 class="mb-4">📋 Inventario y Servicios (MySQL - Aiven)</h2>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-primary"><i class="bi bi-box-seam"></i> Inventario y Servicios (MariaDB)</h2>
+        <a href="{{ url_for('producto_form') }}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Agregar Nuevo
+        </a>
+    </div>
     
-    <table class="table table-hover shadow-sm">
-        <thead class="table-dark">
-            <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Precio</th>
-                <th>Stock</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for s in servicios %}
-            <tr>
-                <td>{{ s.id_servicio }}</td>
-                <td>{{ s.nombre }}</td>
-                <td>${{ s.precio }}</td>
-                <td>{{ s.stock_disponible }}</td>
-                <td>
-                    <a href="{{ url_for('eliminar_servicio', id=s.id_servicio) }}" class="btn btn-sm btn-danger">Eliminar</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Precio</th>
+                        <th>Stock</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in servicios %}
+                    <tr>
+                        <td><span class="badge bg-secondary">{{ s['id_servicio'] }}</span></td>
+                        <td class="fw-bold">{{ s['nombre'] }}</td>
+                        <td class="text-success">${{ s['precio'] }}</td>
+                        <td>
+                            {% if s['stock_disponible'] <= 5 %}
+                                <span class="text-danger fw-bold">{{ s['stock_disponible'] }} (Bajo Stock)</span>
+                            {% else %}
+                                {{ s['stock_disponible'] }}
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <a href="{{ url_for('eliminar_servicio', id=s['id_servicio']) }}" 
+                               class="btn btn-sm btn-outline-danger"
+                               onclick="return confirm('¿Estás seguro de eliminar este producto?')">
+                                <i class="bi bi-trash"></i> Eliminar
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-    <hr class="my-5">
-
-    
+    {% if not servicios %}
+    <div class="alert alert-info mt-3 text-center">
+        No hay productos registrados en el inventario.
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
