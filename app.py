@@ -207,5 +207,7 @@ def factura():
 # ==========================================
 
 if __name__ == '__main__':
+    # Render usa la variable de entorno PORT, si no existe usa el 5000
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    # Importante: host='0.0.0.0' es obligatorio para que Render lo detecte
+    app.run(host='0.0.0.0', port=port)
