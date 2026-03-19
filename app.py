@@ -19,8 +19,8 @@ login_manager.login_message_category = "info"
 
 @login_manager.user_loader
 def load_user(user_id):
-    # Usamos id_usuario como alias 'id' para Flask-Login
-    res = ejecutar_query("SELECT id_usuario as id, nombre, mail as email, password FROM usuarios WHERE id_usuario = %s", (user_id,), es_consulta=True)
+    # Consulta apuntando a la base 'hospital'
+    res = ejecutar_query("SELECT id_usuario as id, nombre, mail as email, password FROM hospital.usuarios WHERE id_usuario = %s", (user_id,), es_consulta=True)
     if res:
         u = res[0]
         return Usuario(id=u['id'], nombre=u['nombre'], email=u['email'], password=u['password'])
@@ -62,7 +62,8 @@ def login():
         mail = request.form.get('mail')
         password = request.form.get('password')
         
-        user_data = ejecutar_query("SELECT id_usuario as id, nombre, mail as email, password FROM usuarios WHERE mail = %s", (mail,), es_consulta=True)        
+        # Ajustado para buscar en hospital.usuarios
+        user_data = ejecutar_query("SELECT id_usuario as id, nombre, mail as email, password FROM hospital.usuarios WHERE mail = %s", (mail,), es_consulta=True)        
         
         if user_data and user_data[0]['password'] == password:
             user_obj = Usuario(
@@ -93,12 +94,12 @@ def registrar_usuario():
         mail = request.form.get('mail')
         password = request.form.get('password')
         
-        existe = ejecutar_query("SELECT * FROM usuarios WHERE mail = %s", (mail,), es_consulta=True)
+        existe = ejecutar_query("SELECT * FROM hospital.usuarios WHERE mail = %s", (mail,), es_consulta=True)
         if existe:
             flash('El correo ya está registrado.', 'warning')
             return redirect(url_for('registrar_usuario'))
 
-        sql = "INSERT INTO usuarios (nombre, mail, password) VALUES (%s, %s, %s)"
+        sql = "INSERT INTO hospital.usuarios (nombre, mail, password) VALUES (%s, %s, %s)"
         ejecutar_query(sql, (nombre, mail, password))
         flash('Registro exitoso. Ahora puedes iniciar sesión.', 'success')
         return redirect(url_for('login'))
@@ -108,7 +109,8 @@ def registrar_usuario():
 @app.route('/usuarios')
 @login_required
 def listar_usuarios():
-    usuarios_db = ejecutar_query("SELECT id_usuario, nombre, mail FROM usuarios", es_consulta=True)
+    # Consulta corregida con prefijo de base de datos
+    usuarios_db = ejecutar_query("SELECT id_usuario, nombre, mail FROM hospital.usuarios", es_consulta=True)
     return render_template('usuarios_lista.html', usuarios=usuarios_db or [])
 
 # ==========================================
@@ -127,6 +129,7 @@ def agendar():
         fecha = request.form.get('fecha')
         hora = request.form.get('hora')
         if paciente and fecha:
+            # Nota: Si sistema_citas da error, revisa gestion.py para usar hospital.citas
             sistema_citas.agendar_cita(paciente, fecha, hora)
             flash('Cita agendada con éxito.', 'success')
             return redirect(url_for('ver_todas_las_citas')) 
@@ -145,7 +148,7 @@ def cambiar_cita():
     nueva_fecha = request.form.get('nueva_fecha')
     
     if id_cita and nueva_fecha:
-        sql = "UPDATE citas SET fecha = %s WHERE id = %s"
+        sql = "UPDATE hospital.citas SET fecha = %s WHERE id = %s"
         ejecutar_query(sql, (nueva_fecha, id_cita))
         flash("¡Fecha actualizada correctamente!", "success")
     else:
@@ -165,7 +168,7 @@ def producto_form():
             precio = float(request.form.get('precio', 0))
             stock = int(request.form.get('cantidad', 0))
             
-            ejecutar_query("INSERT INTO servicios (nombre, precio, stock_disponible) VALUES (%s, %s, %s)", (nombre, precio, stock))
+            ejecutar_query("INSERT INTO hospital.servicios (nombre, precio, stock_disponible) VALUES (%s, %s, %s)", (nombre, precio, stock))
             guardar_formatos_planos(nombre, precio, stock)
             
             flash('Producto agregado al inventario.', 'success')
@@ -177,13 +180,13 @@ def producto_form():
 @app.route('/datos')
 @login_required
 def ver_datos():
-    servicios_mysql = ejecutar_query("SELECT id_servicio, nombre, precio, stock_disponible FROM servicios", es_consulta=True) or []
+    servicios_mysql = ejecutar_query("SELECT id_servicio, nombre, precio, stock_disponible FROM hospital.servicios", es_consulta=True) or []
     return render_template('datos.html', servicios=servicios_mysql)
 
 @app.route('/inventario/eliminar/<int:id>')
 @login_required
 def eliminar_servicio(id):
-    sql = "DELETE FROM servicios WHERE id_servicio = %s"
+    sql = "DELETE FROM hospital.servicios WHERE id_servicio = %s"
     ejecutar_query(sql, (id,))
     flash('Producto eliminado correctamente.', 'warning')
     return redirect(url_for('ver_datos'))
@@ -203,11 +206,9 @@ def factura():
     return render_template('factura.html', total=total)
 
 # ==========================================
-#        EJECUCIÓN DEL SERVIDOR
+#        EJECUCIÓN DEL SERVIDOR (RENDER)
 # ==========================================
 
 if __name__ == '__main__':
-    # Render usa la variable de entorno PORT, si no existe usa el 5000
     port = int(os.environ.get("PORT", 5000))
-    # Importante: host='0.0.0.0' es obligatorio para que Render lo detecte
     app.run(host='0.0.0.0', port=port)
