@@ -20,6 +20,7 @@ login_manager.login_message_category = "info"
 @login_manager.user_loader
 def load_user(user_id):
     # Usamos id_usuario como alias 'id' para que Flask-Login no se confunda
+    # Ajustado según tu tabla en DBeaver
     res = ejecutar_query("SELECT id_usuario as id, nombre, mail as email, password FROM usuarios WHERE id_usuario = %s", (user_id,), es_consulta=True)
     if res:
         u = res[0]
@@ -28,7 +29,7 @@ def load_user(user_id):
 
 # --- FUNCIONES DE APOYO (CENTRALIZADAS) ---
 def ejecutar_query(sql, params=None, es_consulta=False):
-    """Ejecuta comandos SQL en la base de datos MariaDB de Aiven."""
+    """Ejecuta comandos SQL en MariaDB. Se eliminó flash() para evitar errores de contexto en Render."""
     db_mysql = obtener_conexion()
     resultado = None
     if db_mysql:
@@ -41,14 +42,13 @@ def ejecutar_query(sql, params=None, es_consulta=False):
                 db_mysql.commit()
             cursor.close()
         except Exception as e:
+            # Imprimimos en consola para ver el error en los logs de Render
             print(f"Error en la base de datos: {e}")
-            flash(f"Error de base de datos: {e}", "danger")
         finally:
             db_mysql.close()
     return resultado
 
 # 2. INICIALIZACIÓN DE COMPONENTES
-# Pasamos la función ejecutar_query si fuera necesario, o la importamos en gestion.py
 sistema_citas = GestionMedica()
 
 # --- RUTAS DE AUTENTICACIÓN ---
@@ -62,8 +62,9 @@ def login():
         mail = request.form.get('mail')
         password = request.form.get('password')
         
+        # Ajustado para usar id_usuario de tu MariaDB
         user_data = ejecutar_query("SELECT id_usuario as id, nombre, mail as email, password FROM usuarios WHERE mail = %s", (mail,), es_consulta=True)        
-        # Validación de usuario y contraseña (Texto plano según tu solicitud actual)
+        
         if user_data and user_data[0]['password'] == password:
             user_obj = Usuario(
                 id=user_data[0]['id'], 
@@ -72,6 +73,7 @@ def login():
                 password=user_data[0]['password']
             )
             login_user(user_obj)
+            flash(f'Bienvenido de nuevo, {user_obj.nombre}', 'success')
             return redirect(url_for('home'))
         else:
             flash('Correo o contraseña incorrectos', 'danger')
@@ -92,7 +94,6 @@ def registrar_usuario():
         mail = request.form.get('mail')
         password = request.form.get('password')
         
-        # Verificamos si el correo ya existe para evitar errores 500
         existe = ejecutar_query("SELECT * FROM usuarios WHERE mail = %s", (mail,), es_consulta=True)
         if existe:
             flash('El correo ya está registrado.', 'warning')
@@ -104,6 +105,13 @@ def registrar_usuario():
         return redirect(url_for('login'))
         
     return render_template('usuario_form.html')
+
+# NUEVA RUTA: Corregida para que coincida con tu base.html (listar_usuarios)
+@app.route('/usuarios')
+@login_required
+def listar_usuarios():
+    usuarios = ejecutar_query("SELECT id_usuario, nombre, mail FROM usuarios", es_consulta=True)
+    return render_template('usuarios_lista.html', usuarios=usuarios)
 
 # --- RUTAS DE NAVEGACIÓN GENERAL ---
 
@@ -119,7 +127,6 @@ def agendar():
         fecha = request.form.get('fecha')
         hora = request.form.get('hora')
         if paciente and fecha:
-            # Ahora sistema_citas usa MariaDB internamente
             sistema_citas.agendar_cita(paciente, fecha, hora)
             flash('Cita agendada con éxito.', 'success')
             return redirect(url_for('ver_todas_las_citas')) 
@@ -142,10 +149,8 @@ def producto_form():
             precio = float(request.form.get('precio', 0))
             stock = int(request.form.get('cantidad', 0))
             
-            # Guardamos en MariaDB (Aiven)
+            # Guardamos con los nombres de columna de tu DBeaver
             ejecutar_query("INSERT INTO servicios (nombre, precio, stock_disponible) VALUES (%s, %s, %s)", (nombre, precio, stock))
-            
-            # Mantenemos tu guardado en archivos planos si lo necesitas
             guardar_formatos_planos(nombre, precio, stock)
             
             flash('Producto agregado al inventario.', 'success')
@@ -158,10 +163,10 @@ def producto_form():
 @app.route('/datos')
 @login_required
 def ver_datos():
-    servicios_mysql = ejecutar_query("SELECT * FROM servicios", es_consulta=True) or []
+    # Ajustado a id_servicio según tu imagen de DBeaver
+    servicios_mysql = ejecutar_query("SELECT id_servicio, nombre, precio, stock_disponible FROM servicios", es_consulta=True) or []
     return render_template('datos.html', servicios=servicios_mysql)
 
 if __name__ == '__main__':
-    # Usar puerto de variable de entorno para despliegues (Render/Heroku)
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
