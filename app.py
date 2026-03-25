@@ -99,7 +99,7 @@ def registrar_usuario():
 @login_required
 def listar_usuarios():
     usuarios_db = sistema_medico.ejecutar_query("SELECT id_usuario, nombre, mail FROM hospital.usuarios", es_consulta=True)
-    return render_template('usuarios_lista.html', usuarios=usuarios_db or [])
+    return render_template('forms/usuarios_lista.html', usuarios=usuarios_db or [])
 
 # ==========================================
 #         RUTAS DE CITAS MÉDICAS
