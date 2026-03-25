@@ -168,5 +168,7 @@ def factura():
     return render_template('factura.html', total=total)
 
 if __name__ == '__main__':
+    # Render asigna un puerto en la variable de entorno PORT
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    # Importante: usar 0.0.0.0 para que sea accesible externamente
+    app.run(host='0.0.0.0', port=port)
