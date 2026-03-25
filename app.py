@@ -2,11 +2,11 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 
-# 1. IMPORTACIONES MODULARES (Manteniendo tus nombres)
+# 1. IMPORTACIONES MODULARES
+# Asegúrate de que las carpetas 'inventario', 'services' y 'models' tengan un archivo __init__.py
 from inventario.inventario import guardar_formatos_planos
 from services.gestion import GestionMedica
 from models.modelos import Usuario
-# Ya no importamos 'db' de SQLAlchemy aquí para evitar conflictos con tu conexión manual
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'mi_clave_secreta_super_segura_123'
@@ -17,13 +17,17 @@ login_manager.login_view = 'login'
 login_manager.login_message = "Por favor, inicia sesión para acceder a esta página."
 login_manager.login_message_category = "info"
 
-# 2. INICIALIZACIÓN DEL SERVICIO (El cerebro del sistema)
+# 2. INICIALIZACIÓN DEL SERVICIO (Capa de Negocio)
 sistema_medico = GestionMedica()
 
 @login_manager.user_loader
 def load_user(user_id):
-    # Usamos el servicio para buscar al usuario
-    res = sistema_medico.ejecutar_query("SELECT id_usuario as id, nombre, mail as email, password FROM hospital.usuarios WHERE id_usuario = %s", (user_id,), es_consulta=True)
+    # Buscamos al usuario usando el servicio centralizado
+    res = sistema_medico.ejecutar_query(
+        "SELECT id_usuario as id, nombre, mail as email, password FROM hospital.usuarios WHERE id_usuario = %s", 
+        (user_id,), 
+        es_consulta=True
+    )
     if res:
         u = res[0]
         return Usuario(id=u['id'], nombre=u['nombre'], email=u['email'], password=u['password'])
@@ -37,17 +41,30 @@ def load_user(user_id):
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('home'))
+    
     if request.method == 'POST':
         mail = request.form.get('mail')
         password = request.form.get('password')
-        user_data = sistema_medico.ejecutar_query("SELECT id_usuario as id, nombre, mail as email, password FROM hospital.usuarios WHERE mail = %s", (mail,), es_consulta=True)        
+        
+        user_data = sistema_medico.ejecutar_query(
+            "SELECT id_usuario as id, nombre, mail as email, password FROM hospital.usuarios WHERE mail = %s", 
+            (mail,), 
+            es_consulta=True
+        )        
+        
         if user_data and user_data[0]['password'] == password:
-            user_obj = Usuario(id=user_data[0]['id'], nombre=user_data[0]['nombre'], email=user_data[0]['email'], password=user_data[0]['password'])
+            user_obj = Usuario(
+                id=user_data[0]['id'], 
+                nombre=user_data[0]['nombre'], 
+                email=user_data[0]['email'], 
+                password=user_data[0]['password']
+            )
             login_user(user_obj)
             flash(f'Bienvenido de nuevo, {user_obj.nombre}', 'success')
             return redirect(url_for('home'))
         else:
             flash('Correo o contraseña incorrectos', 'danger')
+            
     return render_template('login.html')
 
 @app.route('/logout')
@@ -63,14 +80,20 @@ def registrar_usuario():
         nombre = request.form.get('nombre')
         mail = request.form.get('mail')
         password = request.form.get('password')
+        
         existe = sistema_medico.ejecutar_query("SELECT * FROM hospital.usuarios WHERE mail = %s", (mail,), es_consulta=True)
         if existe:
             flash('El correo ya está registrado.', 'warning')
             return redirect(url_for('registrar_usuario'))
-        sistema_medico.ejecutar_query("INSERT INTO hospital.usuarios (nombre, mail, password) VALUES (%s, %s, %s)", (nombre, mail, password))
+
+        sistema_medico.ejecutar_query(
+            "INSERT INTO hospital.usuarios (nombre, mail, password) VALUES (%s, %s, %s)", 
+            (nombre, mail, password)
+        )
         flash('Registro exitoso. Ahora puedes iniciar sesión.', 'success')
         return redirect(url_for('login'))
-    return render_template('usuario_form.html')
+        
+    return render_template('forms/usuario_form.html')
 
 @app.route('/usuarios')
 @login_required
@@ -127,13 +150,15 @@ def producto_form():
         try:
             precio = float(request.form.get('precio', 0))
             stock = int(request.form.get('cantidad', 0))
+            
             sistema_medico.insertar_servicio(nombre, precio, stock)
             guardar_formatos_planos(nombre, precio, stock)
+            
             flash('Producto agregado al inventario.', 'success')
             return redirect(url_for('ver_datos'))
         except ValueError:
             flash('Error en los datos numéricos.', 'danger')
-    return render_template('producto_form.html')
+    return render_template('forms/producto_form.html')
 
 @app.route('/datos')
 @login_required
@@ -148,10 +173,10 @@ def eliminar_servicio(id):
     flash('Producto eliminado correctamente.', 'warning')
     return redirect(url_for('ver_datos'))
 
-# NUEVA RUTA: Generar Reporte PDF
 @app.route('/reporte/pdf')
 @login_required
 def descargar_reporte():
+    # Esta función en services/gestion.py devuelve un make_response con el PDF
     return sistema_medico.generar_reporte_pdf()
 
 @app.route('/factura', methods=['GET', 'POST'])
@@ -167,8 +192,12 @@ def factura():
             flash("Ingresa un número válido.", "danger")
     return render_template('factura.html', total=total)
 
+# ==========================================
+#         EJECUCIÓN (CONFIGURACIÓN RENDER)
+# ==========================================
+
 if __name__ == '__main__':
-    # Render asigna un puerto en la variable de entorno PORT
+    # Render usa la variable de entorno PORT
     port = int(os.environ.get("PORT", 5000))
-    # Importante: usar 0.0.0.0 para que sea accesible externamente
+    # host='0.0.0.0' es obligatorio para que Render detecte el servicio
     app.run(host='0.0.0.0', port=port)
